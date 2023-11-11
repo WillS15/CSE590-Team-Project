@@ -1,0 +1,9 @@
+### Python 3.10 is required for PyTorch
+
+### Required for Data manipulation
+pip install pandas
+
+pip install torch
+
+### Required for the BERT Tokenizer
+pip install 'transformers[torch]'
