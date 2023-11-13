@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
-
 import pandas as pd
-import torch
 import toolbox as tb
 
-SEED = 1024
+data_split = 0.8
 
-df = tb.read_data('IMDB_Dataset.csv')
-df = tb.tokenize_data(df)
+embedding_dim = 64
+hidden_dim = 256
+num_layers = 2
 
+#Remake init to split and shuffle
+data = tb.SRNN_Dataset('IMDB_Dataset.csv', data_split)
+model = tb.SentimentRNN(data.vocab_size, embedding_dim, hidden_dim, num_layers)
 breakpoint()
 
 print('Yay')
