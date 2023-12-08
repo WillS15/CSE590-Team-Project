@@ -6,6 +6,9 @@ from torch.utils.data import Dataset, DataLoader
 #import nltk
 from transformers import BertTokenizerFast
 
+import os
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
 class SRNN_Dataset(Dataset):
     """
     Takes the entire dataset from a csv and performs preprocessing and splitting.
@@ -52,9 +55,6 @@ class SRNN_Dataset(Dataset):
         print('Done')
         print('Tokenizing ... ', end='', flush=True)
 
-        #nltk.download('punkt')
-        #df['text'] = df['text'].apply(word_tokenize)
-        
         #BERT Tokenizer & Encoding
         tokenizer = BertTokenizerFast.from_pretrained("bert-base-cased")
         df = pd.concat([df['text'], df['text'].apply(tokenizer.encode, padding="max_length", truncation=True, return_tensors="pt").rename('tokens'), df['label']], axis=1)
@@ -79,25 +79,45 @@ class SRNN_Dataset(Dataset):
         return len(self.train.index)
 
     def __getitem__(self, ind):
-        dic = {"text": self.train.iloc[ind].text, "tokens": self.train.iloc[ind].tokens, "label": self.train.iloc[ind].label}
-        return self.train.iloc[ind].to_dict()
+        item = self.train.iloc[ind]
+        return item['tokens'], item['label']
 
 class SentimentRNN(nn.Module):
-    def __init__(self, vocab_size, embedding_dim, hidden_dim, num_layers):
+    def __init__(self, vocab_size, embedding_dim, hidden_dim, num_layers, dropout_prob):
         super(SentimentRNN, self).__init__()
 
-        if torch.cuda.is_available():
-            self.device = torch.device("cuda")
-            print("GPU is available")
-        else:
-            self.device = torch.device("cpu")
-            print("GPU not available, CPU used")
+        #Params
+        self.vocab_size = vocab_size
+        self.embedding_dim = embedding_dim
+        self.hidden_dim = hidden_dim
+        self.num_layers = num_layers
+        self.dropout_prob = dropout_prob
 
+        #Model Components
         self.emb = nn.Embedding(vocab_size, embedding_dim)
         self.lstm = nn.LSTM(embedding_dim, hidden_dim, num_layers, batch_first=True)
-        #self.lstm = nn.LSTM(embedding_dim, hidden_dim, num_layers)
-        self.out = nn.Linear(hidden_dim, 1)
+        self.dropout = nn.Dropout(dropout_prob)
+        self.linear = nn.Linear(hidden_dim, 1)
         self.relu = nn.ReLU()
 
-    def forward(self, sent):
-        pass
+    def forward(self, batch, hidden, batch_size):
+        embeds = self.emb(batch) #Shape [batch_size, 512 (Max from BERT), hidden_dim]
+        
+        lstm_out, hidden = self.lstm(embeds, hidden) #Types are Tensor, tuple
+        lstm_out = lstm_out.contiguous().view(-1, self.hidden_dim) # Shape is now [batch_size * 512, hidden_dim]
+
+        lstm_out = self.dropout(lstm_out)
+        lin_out = self.linear(lstm_out) # Shape [batch_size * 512, 1]
+
+        relu_out = self.relu(lin_out) # Shape [batch_size * 512, 1]
+        relu_out = relu_out.view(batch_size, -1)[:, -1]
+
+        return relu_out, hidden
+
+
+    def init_hidden(self, batch_size, device):
+        #h0 = torch.zeros((self.no_layers, batch_size, self.hidden_dim)).to(device)
+        #h1 = torch.zeros((self.no_layers, batch_size, self.hidden_dim)).to(device)
+        h0 = torch.zeros((self.num_layers, batch_size, self.hidden_dim))
+        h1 = torch.zeros((self.num_layers, batch_size, self.hidden_dim))
+        return (h0, h1)
