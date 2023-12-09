@@ -108,17 +108,17 @@ axes[1].set_xlabel("Epoch")
 axes[1].set_ylabel("Loss")
 axes[1].grid(axis="both", ls="--", alpha=0.2)
 
-axes[0].set_xticks(range(1, epochs+1))
-axes[1].set_xticks(range(1, epochs+1))
+axes[0].set_xticks(range(1, epochs + 1))
+axes[1].set_xticks(range(1, epochs + 1))
 
 axes[0].set_ylim(40, 100)
 axes[1].set_ylim(0, 1)
 
-axes[0].plot(range(epochs), training_accs, lw=2, label="Training")
-axes[0].plot(range(epochs), testing_accs, lw=2, label="Testing")
+axes[0].plot(range(1, epochs + 1), training_accs, lw=2, label="Training")
+axes[0].plot(range(1, epochs + 1), testing_accs, lw=2, label="Testing")
 
-axes[1].plot(range(epochs), training_losses, lw=2, label="Training")
-axes[1].plot(range(epochs), testing_losses, lw=2, label="Testing")
+axes[1].plot(range(1, epochs + 1), training_losses, lw=2, label="Training")
+axes[1].plot(range(1, epochs + 1), testing_losses, lw=2, label="Testing")
 
 axes[0].legend()
 axes[1].legend()
